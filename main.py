@@ -6,19 +6,18 @@ from pydantic import BaseModel
 
 from ai_models import generate_ad_image
 from auth import verify_api_key
+from storage import upload_image_to_s3
 
-app = FastAPI(title="AI Ad Generator API (Async)")
+app = FastAPI(title="AI Ad Generator API (Async + S3)")
+
+# In-memory job store (MVP)
+JOBS = {}
 
 os.makedirs("outputs", exist_ok=True)
 
-# -----------------------------------
-# IN-MEMORY JOB STORE (MVP)
-# -----------------------------------
-JOBS = {}
-
-# -----------------------------------
+# -----------------------------
 # REQUEST SCHEMA
-# -----------------------------------
+# -----------------------------
 class AdRequest(BaseModel):
     product: str
     persona: str
@@ -28,9 +27,10 @@ class AdRequest(BaseModel):
     visual_style: str
     tagline: str
 
-# -----------------------------------
+
+# -----------------------------
 # PROMPT BUILDER
-# -----------------------------------
+# -----------------------------
 def build_prompt(req: AdRequest) -> str:
     return f"""
 High-quality lifestyle advertising photograph.
@@ -64,29 +64,36 @@ Rules:
 - No distorted hands
 """
 
-# -----------------------------------
+
+# -----------------------------
 # BACKGROUND WORKER
-# -----------------------------------
+# -----------------------------
 def process_job(job_id: str, req: AdRequest):
     try:
         prompt = build_prompt(req)
+
         image = generate_ad_image(prompt)
 
-        filename = f"ad_{job_id}.png"
-        output_path = os.path.join("outputs", filename)
-        image.save(output_path)
+        local_path = f"outputs/ad_{job_id}.png"
+        image.save(local_path)
+
+        s3_key = f"ads/ad_{job_id}.png"
+        image_url = upload_image_to_s3(local_path, s3_key)
+
+        os.remove(local_path)
 
         JOBS[job_id]["status"] = "completed"
-        JOBS[job_id]["image_path"] = output_path
+        JOBS[job_id]["image_url"] = image_url
         JOBS[job_id]["prompt_used"] = prompt
 
     except Exception as e:
         JOBS[job_id]["status"] = "failed"
         JOBS[job_id]["error"] = str(e)
 
-# -----------------------------------
-# CREATE AD (FAST RESPONSE)
-# -----------------------------------
+
+# -----------------------------
+# CREATE AD (FAST)
+# -----------------------------
 @app.post("/generate-ad")
 def generate_ad(
     req: AdRequest,
@@ -96,7 +103,7 @@ def generate_ad(
 
     JOBS[job_id] = {
         "status": "processing",
-        "image_path": None
+        "image_url": None
     }
 
     thread = threading.Thread(
@@ -110,9 +117,10 @@ def generate_ad(
         "status": "processing"
     }
 
-# -----------------------------------
+
+# -----------------------------
 # CHECK STATUS
-# -----------------------------------
+# -----------------------------
 @app.get("/status/{job_id}")
 def check_status(
     job_id: str,

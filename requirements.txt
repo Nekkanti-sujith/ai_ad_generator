@@ -17,3 +17,4 @@ opencv-python-headless
 
 openai
 python-dotenv
+boto3
