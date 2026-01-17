@@ -35,6 +35,11 @@ def build_prompt(req: AdRequest) -> str:
     return f"""
 High-quality lifestyle advertising photograph.
 
+Composition rules:
+The composition must be centered and balanced, with generous empty space around all edges.
+The main subject must be fully visible and not cropped.
+No important elements should touch the image borders.
+
 Product:
 {req.product}
 
@@ -45,7 +50,8 @@ Scene:
 {req.scene}
 
 Interaction:
-Person is {req.interaction} the product using their right hand.
+The person is clearly {req.interaction} the product using their right hand.
+The product is clearly visible and recognizable.
 
 Emotion:
 {req.emotion}
@@ -53,16 +59,18 @@ Emotion:
 Visual style:
 {req.visual_style}
 
-Text on image:
-Stylish, modern, italic headline reading "{req.tagline}" placed at the top.
+Text placement:
+A short, stylish headline is placed in the upper third of the image,
+fully visible, not touching the edges, with clear spacing above and below.
 
-Rules:
-- Photorealistic
+Photography rules:
 - Professional advertising photography
 - Natural human posture
 - No extra fingers
 - No distorted hands
+- No cropped heads, hands, or text
 """
+
 
 
 # -----------------------------
