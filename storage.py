@@ -15,18 +15,20 @@ BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 
 
 def upload_image_to_s3(local_path: str, s3_key: str) -> str:
-    """
-    Upload image to S3 and return public URL.
-    """
-
     s3.upload_file(
         local_path,
         BUCKET_NAME,
         s3_key,
-        ExtraArgs={
-                "ContentType": "image/png",
-                "ACL": "public-read"
-            }
+        ExtraArgs={"ContentType": "image/png"}
     )
 
-    return f"https://{BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
+    presigned_url = s3.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={
+            "Bucket": BUCKET_NAME,
+            "Key": s3_key
+        },
+        ExpiresIn=43200  # 1 hour
+    )
+
+    return presigned_url
