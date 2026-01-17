@@ -11,10 +11,6 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def generate_ad_image(prompt: str) -> Image.Image:
-    """
-    Generate an ad image using OpenAI image generation.
-    """
-
     result = client.images.generate(
         model="gpt-image-1",
         prompt=prompt,
